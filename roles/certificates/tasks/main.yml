@@ -1,0 +1,95 @@
+---
+# tasks file for certificates
+
+- name: rename kube node openssl cnf file
+  template:
+     src: openssl-k8-node-hard.cnf.j2
+     dest: "{{cert_dir}}openssl-{{k8_node_fqdn}}.cnf"
+- name: copy apiserver and etcd cert conf file
+  template:
+     src: openssl-apiserver.cnf.j2
+     dest: "{{cert_dir}}openssl-apiserver.cnf"
+  
+
+- name: copy etcd cert conf file
+  template:
+     src: openssl-etcd.cnf.j2
+     dest: "{{cert_dir}}openssl-etcd.cnf" 
+
+
+- name: create ca certificate
+  shell: |
+     openssl genrsa -out ca.key 2048 && openssl req -new -key ca.key -subj "/CN=KUBERNETES-CA" -out ca.csr && openssl x509 -req -in ca.csr -signkey ca.key -CAcreateserial  -out ca.crt -days 3650 \
+     && mv ca.key ca.csr ca.crt  {{cert_dir}}
+  args:
+     creates: "{{cert_dir}}ca.crt"
+
+- name: create admin certificate
+  shell: |
+     openssl genrsa -out admin.key 2048 && openssl req -new -key admin.key -subj "/CN=admin/O=system:masters" -out admin.csr \
+     && openssl x509 -req -in admin.csr -CA {{cert_dir}}ca.crt -CAkey {{cert_dir}}ca.key -CAcreateserial  \
+     -out admin.crt -days 1000 \
+     &&  mv admin.key admin.csr admin.crt {{cert_dir}}
+  args:
+     creates: "{{cert_dir}}admin.crt"
+
+- name: create kube controller manager certificate
+  shell: |
+     openssl genrsa -out kube-controller-manager.key 2048 && openssl req -new -key kube-controller-manager.key -subj "/CN=system:kube-controller-manager" -out kube-controller-manager.csr \
+     && openssl x509 -req -in kube-controller-manager.csr -CA {{cert_dir}}ca.crt -CAkey {{cert_dir}}ca.key -CAcreateserial -out kube-controller-manager.crt -days 1000 \
+     && mv kube-controller-manager.key kube-controller-manager.csr kube-controller-manager.crt {{cert_dir}}
+  args:
+     creates: "{{cert_dir}}kube-controller-manager.crt"
+
+- name: create kube scheduler certificate
+  shell: |
+     openssl genrsa -out kube-scheduler.key 2048 && openssl req -new -key kube-scheduler.key -subj "/CN=system:kube-scheduler" -out kube-scheduler.csr \
+     && openssl x509 -req -in kube-scheduler.csr -CA {{cert_dir}}ca.crt -CAkey {{cert_dir}}ca.key -CAcreateserial  -out kube-scheduler.crt -days 1000 \
+     && mv kube-scheduler.key kube-scheduler.csr kube-scheduler.crt {{cert_dir}}
+  args:
+     creates: "{{cert_dir}}kube-scheduler.crt"
+
+- name: create service account certificate
+  shell: |
+     openssl genrsa -out service-account.key 2048 && openssl req -new -key service-account.key -subj "/CN=service-accounts" -out service-account.csr \
+     && openssl x509 -req -in service-account.csr -CA {{cert_dir}}ca.crt -CAkey {{cert_dir}}ca.key -CAcreateserial  -out service-account.crt -days 1000 \
+     && mv service-account.key service-account.csr service-account.crt {{cert_dir}}
+  args:
+     creates: "{{cert_dir}}service-account.crt"
+
+- name: create apiserver certificate
+  shell: |
+     openssl genrsa -out kube-apiserver.key 2048 && openssl req -new -key kube-apiserver.key -subj "/CN=kube-apiserver" -out kube-apiserver.csr -config "{{cert_dir}}openssl-apiserver.cnf" \
+     && openssl x509 -req -in kube-apiserver.csr -CA {{cert_dir}}ca.crt -CAkey {{cert_dir}}ca.key \
+     -CAcreateserial -out kube-apiserver.crt -extensions v3_req -extfile "{{cert_dir}}openssl-apiserver.cnf" -days 1000 \
+     && mv kube-apiserver.key kube-apiserver.csr kube-apiserver.crt {{cert_dir}}
+  args:
+     creates: "{{cert_dir}}kube-apiserver.crt"
+
+- name: create etcd certificate
+  shell: |
+     openssl genrsa -out etcd-server.key 2048 && openssl req -new -key etcd-server.key -subj "/CN=etcd-server" -out etcd-server.csr -config "{{cert_dir}}openssl-etcd.cnf" \
+     && openssl x509 -req -in etcd-server.csr -CA {{cert_dir}}ca.crt -CAkey {{cert_dir}}ca.key -CAcreateserial \
+     -out etcd-server.crt -extensions v3_req -extfile "{{cert_dir}}openssl-etcd.cnf" -days 1000 \
+     && mv etcd-server.key etcd-server.csr etcd-server.crt {{cert_dir}}
+  args:
+     creates: "{{cert_dir}}etcd-server.crt"
+
+- name: create kube proxy certificate
+  shell: |
+     openssl genrsa -out kube-proxy.key 2048 && openssl req -new -key kube-proxy.key -subj "/CN=system:kube-proxy" -out kube-proxy.csr \
+     && openssl x509 -req -in kube-proxy.csr -CA {{cert_dir}}ca.crt -CAkey {{cert_dir}}ca.key -CAcreateserial  -out kube-proxy.crt -days 1000 \
+     &&  mv kube-proxy.key kube-proxy.csr kube-proxy.crt {{cert_dir}}
+  args:
+     creates: "{{cert_dir}}kube-proxy.crt"
+
+- name: create kubernetes node certificate
+  shell: |
+     openssl genrsa -out "{{k8_node_fqdn}}.key" 2048 \
+     && openssl req -new -key "{{k8_node_fqdn}}.key" -subj "/CN=system:node:{{k8_node_fqdn}}/O=system:nodes" \
+     -out "{{k8_node_fqdn}}.csr" -config "{{cert_dir}}openssl-{{k8_node_fqdn}}.cnf" \
+     && openssl x509 -req -in "{{k8_node_fqdn}}.csr" -CA {{cert_dir}}ca.crt -CAkey {{cert_dir}}ca.key -CAcreateserial -out "{{k8_node_fqdn}}.crt" -extensions v3_req \
+     -extfile "{{cert_dir}}openssl-{{k8_node_fqdn}}.cnf" -days 1000 \
+     && mv "{{k8_node_fqdn}}.key" "{{k8_node_fqdn}}.csr" "{{k8_node_fqdn}}.crt" {{cert_dir}}
+  args:
+     creates: "{{cert_dir}}{{k8_node_fqdn}}.crt"

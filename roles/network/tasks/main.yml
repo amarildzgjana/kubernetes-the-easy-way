@@ -1,0 +1,10 @@
+---
+# tasks file for network
+
+
+- name: apply calico network
+  template:
+     src: calico.yml.j2
+     dest: ~/calico.yaml
+  notify:
+     - create calico network

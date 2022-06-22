@@ -1,0 +1,13 @@
+---
+# tasks file for apiserver-kubelet
+
+- name: konfigure kube apiserver to kubelet
+  copy:
+      src: "{{item}}"
+      dest: /var/lib/kubernetes/
+  loop:
+      - kube-apiserver-to-kubelet-ClusterRole.yml
+      - kube-apiserver-to-kubelet-ClusterRoleBinding.yml
+  notify:
+      - kube apiserver to kubelet ClusterRole
+      - kube apiserver to kubelet ClusterRoleBinding

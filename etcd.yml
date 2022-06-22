@@ -1,0 +1,7 @@
+---
+- hosts: etcd
+  remote_user: vagrant
+  become: yes
+  roles:
+      - etcd
+  

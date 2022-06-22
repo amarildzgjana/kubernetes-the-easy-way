@@ -1,0 +1,87 @@
+---
+# tasks file for kube-controller
+
+- name: create kubernetes API server directory
+  file:
+      path: "{{item}}"
+      state: directory
+      mode: '0755'
+  loop:
+      - /var/lib/kubernetes/
+      - /etc/kubernetes/config
+  notify:
+      - disable ufw
+      - add hosts in hosts file
+
+- name: install wget
+  apt:
+      name: wget
+      state: present
+
+- name: download kube api server kube scheduler kube controller manager
+  get_url:
+      url: "{{item}}"   
+      dest: /usr/local/bin/
+      mode: '755'
+  loop:
+      - "https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kube-apiserver"
+      - "https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kube-controller-manager"
+      - "https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kube-scheduler"
+  notify: 
+      - disable swap
+      - swap off fstab
+
+- name: copy certs and files to master
+  copy:
+      src: "{{item}}"
+      dest: /var/lib/kubernetes/
+  loop:
+      - "{{cert_dir}}ca.crt"
+      - "{{cert_dir}}ca.key"
+      - "{{cert_dir}}kube-apiserver.crt"
+      - "{{cert_dir}}kube-apiserver.key"
+      - "{{cert_dir}}service-account.crt"
+      - "{{cert_dir}}service-account.key"
+      - "{{cert_dir}}etcd-server.crt"
+      - "{{cert_dir}}etcd-server.key"
+      - "{{kubeconfig_dir}}kube-controller-manager.kubeconfig"
+      - "{{kubeconfig_dir}}kube-scheduler.kubeconfig"
+      - "{{kubeconfig_dir}}admin.kubeconfig"
+      - "{{cert_dir}}admin.crt"
+      - "{{cert_dir}}admin.key"
+
+- name: copy kube scheduler yml file to master
+  template:
+      src: kube-scheduler.yaml.j2
+      dest: /etc/kubernetes/config/kube-scheduler.yaml
+
+- name: download and configure kubectl
+  get_url:
+      url: "https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubectl"
+      dest: /usr/local/bin/
+      mode: '755'
+  notify:
+      - kubectl set cluster
+      - kubectl set credentials
+      - kubectl set context
+      - config kubectl for admin user
+
+- name: copy systemd api server service file
+  template:
+      src: kube-apiserver.service.j2
+      dest: /etc/systemd/system/kube-apiserver.service
+  notify: enable and start kube-apiserver
+
+- name: copy systemd kube scheduler service file
+  template:
+      src: kube-scheduler.service.j2
+      dest: /etc/systemd/system/kube-scheduler.service 
+  notify: enable and start kube-scheduler
+
+- name: copy kube controller manager systemd service file
+  template:
+      src: kube-controller-manager.service.j2
+      dest: /etc/systemd/system/kube-controller-manager.service
+  notify: enable and start kube-controller-manager
+
+

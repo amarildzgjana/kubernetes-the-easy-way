@@ -1,0 +1,13 @@
+---
+
+k8_master_ipaddr: 192.168.31.55
+k8_master_fqdn: k8-master-hard
+lb_ipaddr: 192.168.31.52
+k8_node_ipaddr: 192.168.31.56
+k8_node_fqdn: k8-node-hard
+kube_cluster_network: 192.168.31.0/24
+service_cluster_network: 10.96.0.0/24
+service_cluster_dns: 10.96.0.10
+service_cluster_ip: 10.96.0.1
+cert_dir: "{{playbook_dir}}/certs/"
+kubeconfig_dir: "{{playbook_dir}}/kubeconfig/"

@@ -1,0 +1,8 @@
+---
+# tasks file for dns
+
+- name:
+  template:
+     src: coredns-1.8.yaml.j2
+     dest: ~/coredns-1.8.yaml
+  notify: create core dns

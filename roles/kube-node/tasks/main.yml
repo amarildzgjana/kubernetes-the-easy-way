@@ -1,0 +1,118 @@
+---
+# tasks file for kube-node
+
+# install docker
+
+- name: add repository key
+  apt_key:
+     url: https://download.docker.com/linux/ubuntu/gpg
+     state: present
+
+- name: ensure docker registry is available
+  apt_repository:
+     repo: 'deb https://download.docker.com/linux/ubuntu bionic stable'
+     state: present
+
+- name: ensure docker and dependencies are installed
+  apt:
+     name: docker-ce
+     state: present
+  notify:
+     - enable and start docker
+
+
+# bootstrap kubernetes node
+
+- name: create directory if they don't exist
+  file:
+     path: "{{ item }}"
+     state: directory
+     mode: 0775
+  loop:
+     - /etc/cni/net.d
+     - /opt/cni/bin
+     - /var/lib/kubelet
+     - /var/lib/kube-proxy
+     - /var/lib/kubernetes
+     - /var/run/kubernetes
+  notify:
+     - disable ufw
+     - add hosts in hosts file
+     - allow bridge traffic
+     - disable swap
+     - swap off fstab
+
+- name: download kube node binaries
+  get_url:
+     url: "{{ item }}"
+     dest: /usr/local/bin/
+     mode: '755'
+  loop:
+     - https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubectl
+     - https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kube-proxy
+     - https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubelet
+
+- name: download cni
+  get_url:
+     url: "https://github.com/containernetworking/plugins/releases/download/v0.9.1/cni-plugins-linux-amd64-v0.9.1.tgz"
+     dest: /tmp/
+
+- name: unzip cni files
+  unarchive:
+      src: /tmp/cni-plugins-linux-amd64-v0.9.1.tgz
+      dest: /opt/cni/bin/
+      mode: '755'
+      remote_src: yes
+
+
+- name: copy certs and files to kube node
+  copy:
+     src: "{{ item }}"
+     dest: /var/lib/kubelet/
+  loop:
+     - "{{cert_dir}}{{k8_node_fqdn}}.key"
+     - "{{cert_dir}}{{k8_node_fqdn}}.crt"
+
+- name: copy kubeconfig to kube node
+  copy:
+     src: "{{ item }}"
+     dest: /var/lib/kubelet/kubeconfig
+  loop:
+     - "{{kubeconfig_dir}}{{k8_node_fqdn}}.kubeconfig"
+
+- name: copy ca cert to kube node
+  copy:
+     src: "{{ item }}"
+     dest: /var/lib/kubernetes/
+  loop:
+     - "{{cert_dir}}ca.crt"
+
+- name: copy kubeproxy kubeconfig file
+  template:
+     src: kube-proxy-config.yaml.j2
+     dest: /var/lib/kube-proxy/kube-proxy-config.yaml
+
+- name: copy kubelet config yml file
+  template:
+     src: kubelet-config.yaml.j2
+     dest: /var/lib/kubelet/kubelet-config.yaml
+
+- name: copy kubeproxy kubeconfig to k8 node
+  copy:
+     src: "{{kubeconfig_dir}}kube-proxy.kubeconfig"
+     dest: /var/lib/kube-proxy/kubeconfig
+
+- name: copy kubelet service file
+  template:
+     src: kubelet.service.j2
+     dest: /etc/systemd/system/kubelet.service
+  notify:
+     - enable and start kubelet
+
+- name: copy kube proxy service file 
+  template:
+     src: kube-proxy.service.j2
+     dest: /etc/systemd/system/kube-proxy.service
+  notify:
+     - enable and start kube-proxy
+

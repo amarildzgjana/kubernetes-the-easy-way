@@ -1,0 +1,8 @@
+---
+- hosts: k8-master-hard
+  remote_user: vagrant
+  become: yes
+  roles:
+      - kube-controller
+
+

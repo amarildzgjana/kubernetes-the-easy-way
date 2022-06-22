@@ -1,0 +1,6 @@
+---
+- hosts: k8-lb
+  remote_user: vagrant
+  become: yes
+  roles:
+      - k8-LB

@@ -1,0 +1,102 @@
+---
+# tasks file for kubeconfig
+
+- name: create kube proxy kubeconfig file
+  shell: |
+     kubectl config set-cluster kubernetes-the-hard-way \
+     --certificate-authority={{cert_dir}}ca.crt \
+     --embed-certs=true \
+     --server=https://{{lb_ipaddr}}:6443 \
+     --kubeconfig={{kubeconfig_dir}}kube-proxy.kubeconfig \
+     && sleep 2 &&  kubectl config set-credentials system:kube-proxy \
+     --client-certificate={{cert_dir}}kube-proxy.crt \
+     --client-key={{cert_dir}}kube-proxy.key \
+     --embed-certs=true \
+     --kubeconfig={{kubeconfig_dir}}kube-proxy.kubeconfig \
+     && sleep 2 && kubectl config set-context default \
+     --cluster=kubernetes-the-hard-way \
+     --user=system:kube-proxy \
+     --kubeconfig={{kubeconfig_dir}}kube-proxy.kubeconfig \
+      && kubectl config use-context default --kubeconfig={{kubeconfig_dir}}kube-proxy.kubeconfig
+  args:
+     creates: "{{kubeconfig_dir}}kube-proxy.kubeconfig"
+
+- name: create kube controller manager kubeconfig file
+  shell: |
+     kubectl config set-cluster kubernetes-the-hard-way \
+     --certificate-authority={{cert_dir}}ca.crt \
+     --embed-certs=true \
+     --server=https://127.0.0.1:6443 \
+     --kubeconfig={{kubeconfig_dir}}kube-controller-manager.kubeconfig \
+     && sleep 2 && kubectl config set-credentials system:kube-controller-manager \
+     --client-certificate={{cert_dir}}kube-controller-manager.crt \
+     --client-key={{cert_dir}}kube-controller-manager.key \
+     --embed-certs=true \
+     --kubeconfig={{kubeconfig_dir}}kube-controller-manager.kubeconfig \
+     && sleep 2 && kubectl config set-context default \
+     --cluster=kubernetes-the-hard-way \
+     --user=system:kube-controller-manager \
+     --kubeconfig={{kubeconfig_dir}}kube-controller-manager.kubeconfig \
+     && kubectl config use-context default --kubeconfig={{kubeconfig_dir}}kube-controller-manager.kubeconfig
+  args:
+     creates: "{{kubeconfig_dir}}kube-controller-manager.kubeconfig"
+
+- name: create kube scheduler kubeconfig file
+  shell: |
+     kubectl config set-cluster kubernetes-the-hard-way \
+     --certificate-authority={{cert_dir}}ca.crt \
+     --embed-certs=true \
+     --server=https://127.0.0.1:6443 \
+     --kubeconfig={{kubeconfig_dir}}kube-scheduler.kubeconfig \
+     && sleep 2 && kubectl config set-credentials system:kube-scheduler \
+     --client-certificate={{cert_dir}}kube-scheduler.crt \
+     --client-key={{cert_dir}}kube-scheduler.key \
+     --embed-certs=true \
+     --kubeconfig={{kubeconfig_dir}}kube-scheduler.kubeconfig \
+     && sleep 2 && kubectl config set-context default \
+     --cluster=kubernetes-the-hard-way \
+     --user=system:kube-scheduler \
+     --kubeconfig={{kubeconfig_dir}}kube-scheduler.kubeconfig \
+     && kubectl config use-context default --kubeconfig={{kubeconfig_dir}}kube-scheduler.kubeconfig
+  args:
+     creates: "{{kubeconfig_dir}}kube-scheduler.kubeconfig"
+
+- name: create kube admin kubeconfig file
+  shell: |
+     kubectl config set-cluster kubernetes-the-hard-way \
+     --certificate-authority={{cert_dir}}ca.crt \
+     --embed-certs=true \
+     --server=https://127.0.0.1:6443 \
+     --kubeconfig={{kubeconfig_dir}}admin.kubeconfig \
+     && sleep 2 && kubectl config set-credentials admin \
+     --client-certificate={{cert_dir}}admin.crt \
+     --client-key={{cert_dir}}admin.key \
+     --embed-certs=true \
+     --kubeconfig={{kubeconfig_dir}}admin.kubeconfig \
+     && sleep 2 && kubectl config set-context default \
+     --cluster=kubernetes-the-hard-way \
+     --user=admin \
+     --kubeconfig={{kubeconfig_dir}}admin.kubeconfig \
+     && kubectl config use-context default --kubeconfig={{kubeconfig_dir}}admin.kubeconfig
+  args:
+     creates: "{{kubeconfig_dir}}admin.kubeconfig"
+
+- name: create node kubeconfig file
+  shell: |
+     kubectl config set-cluster kubernetes-the-hard-way \
+     --certificate-authority={{cert_dir}}ca.crt \
+     --embed-certs=true \
+     --server=https://{{lb_ipaddr}}:6443 \
+     --kubeconfig={{kubeconfig_dir}}{{k8_node_fqdn}}.kubeconfig \
+     && sleep 2 && kubectl config set-credentials system:node:{{k8_node_fqdn}} \
+     --client-certificate={{cert_dir}}{{k8_node_fqdn}}.crt \
+     --client-key={{cert_dir}}{{k8_node_fqdn}}.key \
+     --embed-certs=true \
+     --kubeconfig={{kubeconfig_dir}}{{k8_node_fqdn}}.kubeconfig \
+     && sleep 2 && kubectl config set-context default \
+     --cluster=kubernetes-the-hard-way \
+     --user=system:node:{{k8_node_fqdn}} \
+     --kubeconfig={{kubeconfig_dir}}{{k8_node_fqdn}}.kubeconfig \
+     && kubectl config use-context default --kubeconfig={{kubeconfig_dir}}{{k8_node_fqdn}}.kubeconfig
+  args:
+     creates: "{{kubeconfig_dir}}{{k8_node_fqdn}}.kubeconfig"

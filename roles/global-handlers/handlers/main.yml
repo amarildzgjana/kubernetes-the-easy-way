@@ -1,0 +1,130 @@
+---
+# handlers file for global-handlers
+
+- name: disable ufw
+  systemd:
+    name: ufw
+    enabled: no
+    state: stopped
+
+- name: disable swap
+  shell: |
+    swapoff -a
+- name: swap off fstab
+  replace:
+    path: /etc/fstab
+    regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+    replace: '# \1'
+
+- name: add hosts in hosts file
+  shell: |
+    echo '192.168.31.55 k8-master-hard' >> /etc/hosts && echo '192.168.31.56 k8-node-hard' >> /etc/hosts && echo '192.168.31.52 k8-lb' >> /etc/hosts
+
+- name: fix haproxy bind issue
+  shell: |
+    setsebool -P haproxy_connect_any=1
+
+
+- name: allow bridge traffic
+  shell: |
+    sysctl net.bridge.bridge-nf-call-iptables=1
+
+- name: enable and start haproxy
+  systemd:
+    name: haproxy
+    enabled: yes
+    daemon_reload: yes
+    state: started
+
+
+- name: enable and start etcd
+  systemd:
+    name: etcd
+    enabled: yes
+    daemon_reload: yes
+    state: started
+
+- name: enable and start kube-apiserver
+  systemd:
+    name: kube-apiserver
+    enabled: yes
+    daemon_reload: yes
+    state: started
+
+- name: enable and start kube-scheduler
+  systemd:
+    name: kube-scheduler
+    enabled: yes
+    daemon_reload: yes
+    state: started
+
+- name: enable and start kube-controller-manager
+  systemd:
+    name: kube-controller-manager
+    enabled: yes
+    daemon_reload: yes
+    state: started
+
+
+# kubectl admin user config
+- name: kubectl set cluster
+  shell: |
+    kubectl config set-cluster kubernetes-the-hard-way \
+    --certificate-authority=/var/lib/kubernetes/ca.crt \
+    --embed-certs=true \
+    --server=https://{{lb_ipaddr}}:6443
+
+- name: kubectl set credentials
+  shell: |
+    kubectl config set-credentials admin \
+    --client-certificate=/var/lib/kubernetes/admin.crt \
+    --client-key=/var/lib/kubernetes/admin.key
+
+- name: kubectl set context
+  shell: |
+    kubectl config set-context kubernetes-the-hard-way \
+    --cluster=kubernetes-the-hard-way \
+    --user=admin
+
+- name: config kubectl for admin user
+  shell: |
+    kubectl config use-context kubernetes-the-hard-way
+
+# kubectl configuration for kube apiserver to kubelet
+- name: kube apiserver to kubelet ClusterRole
+  shell: |
+    kubectl apply --kubeconfig /var/lib/kubernetes/admin.kubeconfig -f /var/lib/kubernetes/kube-apiserver-to-kubelet-ClusterRole.yml
+
+- name: kube apiserver to kubelet ClusterRoleBinding
+  shell: |
+    kubectl apply --kubeconfig /var/lib/kubernetes/admin.kubeconfig -f /var/lib/kubernetes/kube-apiserver-to-kubelet-ClusterRoleBinding.yml
+
+- name: enable and start docker
+  systemd:
+    name: docker
+    enabled: yes
+    daemon_reload: yes
+    state: started
+
+- name: enable and start kubelet
+  systemd:
+    name: kubelet
+    enabled: yes
+    daemon_reload: yes
+    state: started
+
+- name: enable and start kube-proxy
+  systemd:
+    name: kube-proxy
+    enabled: yes
+    daemon_reload: yes
+    state: started
+
+- name: create calico network
+  shell: |
+    kubectl apply -f ~/calico.yaml
+
+- name: create core dns
+  shell: |
+    kubectl apply -f ~/coredns-1.8.yaml
+

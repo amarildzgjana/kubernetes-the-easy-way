@@ -1,0 +1,52 @@
+---
+# tasks file for etcd
+
+- name: download tarball etcd
+  get_url:
+      url: "https://github.com/etcd-io/etcd/releases/download/v3.4.15/etcd-v3.4.15-linux-amd64.tar.gz"
+      dest: /tmp
+
+- name: UNZIPPING the files
+  unarchive:
+      src: /tmp/etcd-v3.4.15-linux-amd64.tar.gz
+      dest: /tmp
+      mode: '755'
+      remote_src: yes
+
+- name: copy etcd and etcdtl binary
+  copy:
+      src: "{{item}}"
+      dest: /usr/local/bin/
+      mode: '755'
+      remote_src: yes
+  loop:
+      - /tmp/etcd-v3.4.15-linux-amd64/etcd
+      - /tmp/etcd-v3.4.15-linux-amd64/etcdctl
+
+- name: Create etcd directories
+  file:
+      path: /etc/etcd
+      state: directory
+      mode: '0755'
+
+- name: Create etcd directory
+  file:
+      path: /var/lib/etcd
+      state: directory
+      mode: '0755'
+
+- name: copy certs for etcd
+  copy:
+      src: "{{item}}"
+      dest: /etc/etcd/
+  loop:
+      - "{{cert_dir}}ca.crt"
+      - "{{cert_dir}}etcd-server.key"
+      - "{{cert_dir}}etcd-server.crt"
+
+- name: copy service file
+  template:
+      src: etcd.service.j2
+      dest: /etc/systemd/system/etcd.service
+  notify:
+      - enable and start etcd
