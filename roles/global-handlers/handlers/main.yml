@@ -18,7 +18,7 @@
 
 - name: add hosts in hosts file
   shell: |
-    echo '{{ k8_master_ipaddr}} {{k8_master_fqdn}}' >> /etc/hosts && echo '{{k8_node_ipaddr}} {{k8-node-hard}}' >> /etc/hosts && echo '{{lb_ipaddr}} {{lb_fqdn}}' >> /etc/hosts >> /etc/hosts
+    echo '{{ k8_master_ipaddr}} {{k8_master_fqdn}}' >> /etc/hosts && echo '{{k8_node_ipaddr}} {{k8_node_fqdn}}' >> /etc/hosts && echo '{{lb_ipaddr}} {{lb_fqdn}}' >> /etc/hosts >> /etc/hosts
 
 - name: fix haproxy bind issue
   shell: |
